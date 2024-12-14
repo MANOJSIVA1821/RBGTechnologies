@@ -322,9 +322,9 @@ pub fn uncompress_deb(
     let zip_parent_str = path_to_string(zip_parent);
     let opt_edge_str = format!("{}/opt/microsoft/{}", zip_parent_str, label);
 
-    // Exception due to bad symbolic link in msedge-beta
+    // Exception due to bad symbolic link in unstable distributions. For example:
     // microsoft-edge -> /opt/microsoft/msedge-beta/microsoft-edge-beta
-    if label.eq("msedge-beta") {
+    if !label.eq("msedge") {
         let link = format!("{}/microsoft-edge", opt_edge_str);
         fs::remove_file(Path::new(&link)).unwrap_or_default();
     }
