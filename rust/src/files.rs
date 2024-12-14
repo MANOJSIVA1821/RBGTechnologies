@@ -99,6 +99,10 @@ impl Lock {
         self.file.unlock().unwrap_or_default();
         fs::remove_file(&self.path).unwrap_or_default();
     }
+
+    fn exists(&mut self) -> bool {
+        self.path.exists()
+    }
 }
 
 pub fn create_parent_path_if_not_exists(path: &Path) -> Result<(), Error> {
@@ -154,6 +158,19 @@ pub fn uncompress(
 
     // Acquire file lock to prevent race conditions accessing the cache folder by concurrent SM processes
     let mut lock = Lock::acquire(log, target, single_file.clone())?;
+    if !lock.exists() {
+        let num_files_in_target = WalkDir::new(target).into_iter().count();
+        if (single_file.is_some() && num_files_in_target == 1)
+            || (single_file.is_none() && num_files_in_target > 1)
+        {
+            log.trace(format!(
+                "{} file(s) in {}",
+                num_files_in_target,
+                target.display()
+            ));
+            return Ok(());
+        }
+    }
 
     if extension.eq_ignore_ascii_case(ZIP) {
         unzip(compressed_file, target, log, single_file)?
