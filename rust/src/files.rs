@@ -321,6 +321,14 @@ pub fn uncompress_deb(
 
     let zip_parent_str = path_to_string(zip_parent);
     let opt_edge_str = format!("{}/opt/microsoft/{}", zip_parent_str, label);
+
+    // Exception due to bad symbolic link in msedge-beta
+    // microsoft-edge -> /opt/microsoft/msedge-beta/microsoft-edge-beta
+    if label.eq("msedge-beta") {
+        let link = format!("{}/microsoft-edge", opt_edge_str);
+        fs::remove_file(Path::new(&link)).unwrap_or_default();
+    }
+
     move_folder_content(&opt_edge_str, &target, &log)?;
 
     Ok(())
@@ -369,14 +377,12 @@ pub fn uncompress_tar(decoder: &mut dyn Read, target: &Path, log: &Logger) -> Re
     let mut buffer: Vec<u8> = Vec::new();
     decoder.read_to_end(&mut buffer)?;
     let mut archive = Archive::new(Cursor::new(buffer));
-    if !target.exists() {
-        for entry in archive.entries()? {
-            let mut entry_decoder = entry?;
-            let entry_path: PathBuf = entry_decoder.path()?.iter().skip(1).collect();
-            let entry_target = target.join(entry_path);
-            fs::create_dir_all(entry_target.parent().unwrap())?;
-            entry_decoder.unpack(entry_target)?;
-        }
+    for entry in archive.entries()? {
+        let mut entry_decoder = entry?;
+        let entry_path: PathBuf = entry_decoder.path()?.iter().skip(1).collect();
+        let entry_target = target.join(entry_path);
+        fs::create_dir_all(entry_target.parent().unwrap())?;
+        entry_decoder.unpack(entry_target)?;
     }
     Ok(())
 }
